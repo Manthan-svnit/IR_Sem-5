@@ -1,9 +1,22 @@
-const API_BASE =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  "http://localhost:8000";
-
+/**
+ * Dynamically resolves the full backend API URL using process.env.NEXT_PUBLIC_API_URL.
+ * Prevents double slashes (e.g., if env has a trailing slash) and ensures
+ * no trailing slash at the end of the route.
+ */
 export function getApiBase() {
-  return API_BASE;
+  const raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  return raw.trim().replace(/\/+$/, "");
+}
+
+export function resolveApiUrl(path) {
+  const base = getApiBase();
+  // Separate query string if present
+  const [pathname, search] = path.split("?");
+  // Ensure exactly one leading slash before api, and strip any trailing slash at the end of the route
+  const cleanPathname = ("/" + pathname.replace(/^\/+/, "")).replace(/\/+$/, "");
+  const queryString = search ? `?${search}` : "";
+
+  return `${base}${cleanPathname}${queryString}`;
 }
 
 /** Sync the token to both localStorage AND a cookie so middleware can read it. */
@@ -33,14 +46,15 @@ async function apiFetch(path, options = {}) {
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const method = options.method || "GET";
+  const url = resolveApiUrl(path);
   const startTime = performance.now();
-  console.log(`[API] → ${method} ${path}`);
+  console.log(`[API] → ${method} ${url}`);
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await fetch(url, { ...options, headers });
   const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
 
   if (res.status === 204) {
-    console.log(`[API] ← ${method} ${path} → 204 (${elapsed}s)`);
+    console.log(`[API] ← ${method} ${url} → 204 (${elapsed}s)`);
     return null;
   }
 
@@ -54,12 +68,12 @@ async function apiFetch(path, options = {}) {
   }
 
   if (!res.ok) {
-    console.error(`[API] <- ${method} ${path} -> ${res.status} (${elapsed}s)`, data || text);
+    console.error(`[API] <- ${method} ${url} -> ${res.status} (${elapsed}s)`, data || text);
     const detailMsg = data?.detail || text || `Request failed (${res.status})`;
     throw new Error(detailMsg);
   }
 
-  console.log(`[API] <- ${method} ${path} -> ${res.status} (${elapsed}s)`);
+  console.log(`[API] <- ${method} ${url} -> ${res.status} (${elapsed}s)`);
   return data;
 }
 
@@ -107,7 +121,8 @@ export async function deletePdf(pdfId) {
 
 export function getPdfViewUrl(pdfId) {
   const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
-  return `${API_BASE}/api/pdfs/${pdfId}/view?token=${encodeURIComponent(token || "")}`;
+  const base = getApiBase();
+  return `${base}/api/pdfs/${pdfId}/view?token=${encodeURIComponent(token || "")}`;
 }
 
 // ── Chats ──────────────────────────────────────────────────────────
