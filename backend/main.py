@@ -49,27 +49,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS — origins are configurable via CORS_ORIGINS=a,b,c (comma-separated).
-# Falls back to localhost for local dev.
-_origins_raw = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000",
-)
-_allow_origins = [o.strip() for o in _origins_raw.split(",") if o.strip()]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_allow_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 
 # ---------------------------------------------------------------------------
 # Request logging middleware — logs every incoming request with timing
 # ---------------------------------------------------------------------------
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
+    # Fast-return check for CORS preflight OPTIONS requests to prevent issues with empty bodies
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     start = time.time()
     method = request.method
     path = request.url.path
@@ -88,6 +77,24 @@ async def log_requests(request: Request, call_next):
     logger.log(level, f"<- {method} {path} -> {status} ({elapsed:.2f}s)")
 
     return response
+
+
+# ---------------------------------------------------------------------------
+# CORS Middleware
+# Added after custom HTTP middleware so CORSMiddleware acts as the outermost layer,
+# intercepting and responding to CORS preflight OPTIONS requests first.
+# ---------------------------------------------------------------------------
+origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",") if origin.strip()]
+if not origins:
+    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # ---------------------------------------------------------------------------
