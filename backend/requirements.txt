@@ -15,6 +15,7 @@ python-multipart
 motor
 pymongo
 supabase
+psycopg2-binary
 
 # --- Auth ---
 python-jose[cryptography]
