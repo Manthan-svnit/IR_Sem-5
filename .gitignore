@@ -1,0 +1,21 @@
+# --- OS / editor noise that can appear anywhere in the tree ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- log files ---
+*.log
+logs/
+
+# --- anything that ends up in either side's tree by mistake ---
+**/.env
+**/.env.local
+**/.env.*.local
+**/__pycache__/
+**/.next/
+**/node_modules/
+**/venv/

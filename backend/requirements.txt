@@ -1,0 +1,26 @@
+# --- PDF parsing ---
+PyMuPDF
+pypdf
+
+# --- AI: Gemini (chat + embeddings) ---
+# google-genai is the supported successor to the deprecated google-generativeai package.
+google-genai
+
+# --- Web framework ---
+fastapi
+uvicorn[standard]
+python-multipart
+
+# --- Database / storage ---
+motor
+pymongo
+supabase
+
+# --- Auth ---
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+
+# --- Misc ---
+python-dotenv
+pydantic[email]
