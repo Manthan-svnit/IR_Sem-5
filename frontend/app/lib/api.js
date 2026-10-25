@@ -179,8 +179,20 @@ export async function renameChat(chatId, title) {
 
 export async function sendMessage(chatId, content) {
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+  const token =
+    (typeof window !== "undefined" ? localStorage.getItem("token") : null) ||
+    (typeof document !== "undefined"
+      ? document.cookie.match(/(?:^|;\s*)auth_token=([^;]+)/)?.[1]
+      : null);
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${decodeURIComponent(token)}` } : {}),
+  };
+
   return apiFetch(`${baseUrl}/api/chats/${chatId}/message`, {
     method: "POST",
+    headers,
     body: JSON.stringify({ content }),
   });
 }
