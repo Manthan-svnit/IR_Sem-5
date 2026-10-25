@@ -34,6 +34,9 @@ export function getApiBase() {
 }
 
 export function resolveApiUrl(path) {
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    return path;
+  }
   const base = getApiBase();
   // Separate query string if present
   const [pathname, search] = path.split("?");
@@ -175,7 +178,8 @@ export async function renameChat(chatId, title) {
 }
 
 export async function sendMessage(chatId, content) {
-  return apiFetch(`/api/chats/${chatId}/message`, {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/+$/, "");
+  return apiFetch(`${baseUrl}/api/chats/${chatId}/message`, {
     method: "POST",
     body: JSON.stringify({ content }),
   });

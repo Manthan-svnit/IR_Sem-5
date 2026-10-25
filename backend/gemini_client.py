@@ -27,7 +27,7 @@ load_dotenv()
 logger = logging.getLogger("chatpdf.gemini")
 
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
-CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
+CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")
 FALLBACK_CHAT_MODEL = "gemini-3.8-flash"
 # gemini-embedding-001 supports Matryoshka — request 768 to match our pgvector schema.
 EMBED_DIM   = 768
