@@ -27,8 +27,8 @@ load_dotenv()
 logger = logging.getLogger("chatpdf.gemini")
 
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
-CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")
-FALLBACK_CHAT_MODEL = "gemini-3.8-flash"
+CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.1-flash-lite")
+FALLBACK_CHAT_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.8-flash"]
 # gemini-embedding-001 supports Matryoshka — request 768 to match our pgvector schema.
 EMBED_DIM   = 768
 
@@ -122,26 +122,31 @@ def _call_chat_model(
     config: types.GenerateContentConfig | None = None,
     op: str = "chat",
 ):
-    """Call the chat model with fallback if the requested model is not available."""
+    """Call the chat model with fallback if the requested model is unavailable (404) or quota exhausted (429)."""
     global CHAT_MODEL
-    try:
-        return client.models.generate_content(
-            model=CHAT_MODEL,
-            contents=contents,
-            config=config,
-        )
-    except genai_errors.ClientError as e:
-        if e.code == 404 and CHAT_MODEL != FALLBACK_CHAT_MODEL:
-            logger.warning(
-                f"[{op}] Model '{CHAT_MODEL}' unavailable (404), falling back to '{FALLBACK_CHAT_MODEL}'"
-            )
-            CHAT_MODEL = FALLBACK_CHAT_MODEL
-            return client.models.generate_content(
-                model=CHAT_MODEL,
+    candidates = [CHAT_MODEL] + [m for m in FALLBACK_CHAT_MODELS if m != CHAT_MODEL]
+    last_exc = None
+    for m in candidates:
+        try:
+            res = client.models.generate_content(
+                model=m,
                 contents=contents,
                 config=config,
             )
-        raise
+            if m != CHAT_MODEL:
+                logger.info(f"[{op}] Switched active model from '{CHAT_MODEL}' to '{m}'")
+                CHAT_MODEL = m
+            return res
+        except genai_errors.ClientError as e:
+            if e.code in (404, 429):
+                logger.warning(
+                    f"[{op}] Model '{m}' failed with {e.code} ({e.status}), trying next candidate..."
+                )
+                last_exc = e
+                continue
+            raise
+    if last_exc:
+        raise last_exc
 
 
 def verify_gemini_key() -> tuple[bool, str]:
