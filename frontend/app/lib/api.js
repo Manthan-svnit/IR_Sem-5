@@ -4,8 +4,33 @@
  * no trailing slash at the end of the route.
  */
 export function getApiBase() {
-  const raw = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return raw.trim().replace(/\/+$/, "");
+  let raw = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").trim();
+
+  // If set with markdown link syntax like [https://...](https://...)
+  const mdMatch = raw.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i);
+  if (mdMatch) {
+    raw = mdMatch[1];
+  } else {
+    // If set with markdown label like [https://ir-sem-5.onrender.com]
+    const labelMatch = raw.match(/\[(https?:\/\/[^\]]+)\]/i);
+    if (labelMatch) {
+      raw = labelMatch[1];
+    }
+  }
+
+  // Strip wrapping quotes and brackets if any
+  raw = raw.replace(/^["'\[]+|["'\]]+$/g, "").trim();
+
+  // Add https:// if protocol is missing (unless localhost)
+  if (!/^https?:\/\//i.test(raw)) {
+    if (raw.startsWith("localhost") || raw.startsWith("127.0.0.1")) {
+      raw = `http://${raw}`;
+    } else {
+      raw = `https://${raw}`;
+    }
+  }
+
+  return raw.replace(/\/+$/, "");
 }
 
 export function resolveApiUrl(path) {

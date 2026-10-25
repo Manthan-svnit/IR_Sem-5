@@ -86,11 +86,18 @@ async def log_requests(request: Request, call_next):
 # ---------------------------------------------------------------------------
 origins = [origin.strip() for origin in os.environ.get("CORS_ORIGINS", "").split(",") if origin.strip()]
 if not origins:
-    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://ir-sem-5.vercel.app",
+    ]
+elif "https://ir-sem-5.vercel.app" not in origins:
+    origins.append("https://ir-sem-5.vercel.app")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -106,6 +113,7 @@ app.include_router(chats_router)
 
 
 @app.get("/")
+@app.head("/")
 async def root():
     return {
         "status": "ok",
@@ -115,6 +123,7 @@ async def root():
 
 
 @app.get("/health")
+@app.head("/health")
 async def health():
     return {"status": "healthy"}
 
