@@ -27,8 +27,20 @@ load_dotenv()
 logger = logging.getLogger("chatpdf.gemini")
 
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
-CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-flash-lite-latest")
-FALLBACK_CHAT_MODELS = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.8-flash"]
+
+# --- Chat Models (Uncomment whichever model you want to set as primary) ---
+CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-flash-lite-latest")  # Currently active: low latency & reliable capacity
+# CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.1-flash-lite")     # High speed lite model (may experience traffic spikes)
+# CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.8-flash")          # Powerful flash model (20 req/day free limit)
+# CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.5-flash")          # Legacy 2.5 flash
+# CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")          # Legacy 2.0 flash
+
+# Automatic failover order if active model returns 404, 429 (rate limit), or 503 (high demand)
+FALLBACK_CHAT_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-3.1-flash-lite",
+    "gemini-3.8-flash",
+]
 # gemini-embedding-001 supports Matryoshka — request 768 to match our pgvector schema.
 EMBED_DIM   = 768
 
