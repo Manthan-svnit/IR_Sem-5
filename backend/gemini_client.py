@@ -27,8 +27,8 @@ load_dotenv()
 logger = logging.getLogger("chatpdf.gemini")
 
 EMBED_MODEL = os.getenv("GEMINI_EMBED_MODEL", "gemini-embedding-001")
-CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-3.1-flash-lite")
-FALLBACK_CHAT_MODELS = ["gemini-3.1-flash-lite", "gemini-flash-lite-latest", "gemini-3.8-flash"]
+CHAT_MODEL  = os.getenv("GEMINI_CHAT_MODEL", "gemini-flash-lite-latest")
+FALLBACK_CHAT_MODELS = ["gemini-flash-lite-latest", "gemini-3.1-flash-lite", "gemini-3.8-flash"]
 # gemini-embedding-001 supports Matryoshka — request 768 to match our pgvector schema.
 EMBED_DIM   = 768
 
@@ -122,7 +122,7 @@ def _call_chat_model(
     config: types.GenerateContentConfig | None = None,
     op: str = "chat",
 ):
-    """Call the chat model with fallback if the requested model is unavailable (404) or quota exhausted (429)."""
+    """Call the chat model with fallback if the requested model is unavailable (404), quota exhausted (429), or overloaded (503)."""
     global CHAT_MODEL
     candidates = [CHAT_MODEL] + [m for m in FALLBACK_CHAT_MODELS if m != CHAT_MODEL]
     last_exc = None
@@ -137,10 +137,11 @@ def _call_chat_model(
                 logger.info(f"[{op}] Switched active model from '{CHAT_MODEL}' to '{m}'")
                 CHAT_MODEL = m
             return res
-        except genai_errors.ClientError as e:
-            if e.code in (404, 429):
+        except (genai_errors.ClientError, genai_errors.ServerError) as e:
+            code = getattr(e, "code", None)
+            if code in (404, 429, 503):
                 logger.warning(
-                    f"[{op}] Model '{m}' failed with {e.code} ({e.status}), trying next candidate..."
+                    f"[{op}] Model '{m}' returned {code} ({getattr(e, 'status', 'ERR')}), trying next candidate..."
                 )
                 last_exc = e
                 continue
